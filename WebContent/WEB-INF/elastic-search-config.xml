@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+    http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+    http://www.springframework.org/schema/context
+    http://www.springframework.org/schema/context/spring-context.xsd
+    http://www.springframework.org/schema/data/elasticsearch http://www.springframework.org/schema/data/elasticsearch/spring-elasticsearch-1.0.xsd
+	http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+    "
+	xmlns:elasticsearch="http://www.springframework.org/schema/data/elasticsearch">
+
+	<elasticsearch:transport-client id="client"
+		cluster-name="elasticsearch" cluster-nodes="localhost:9300" /> <!-- 123.30.238.22 -->
+
+	<bean name="elasticsearchTemplate"
+		class="org.springframework.data.elasticsearch.core.ElasticsearchTemplate">
+		<constructor-arg name="client" ref="client" />
+	</bean>
+
+	<bean id="elasticSearchService" class="vn.onepay.search.service.impl.ElasticSearchServiceImpl">
+		<property name="elasticsearchTemplate" ref="elasticsearchTemplate" />
+	</bean>
+	
+	<bean id="searchClient" class="vn.onepay.search.client.SearchClient">
+		<property name="endPoint"  value="http://localhost:8080/search/card/pushIndex" />
+		<property name="accessKey" value="72hgke3h3brs6dwh6kgg"/>
+		<property name="secretKey" value="i9er0d7gm7b9l9yt4ib8zjigwf6i1jpm"/>
+		<property name="isActived" value="true"/>
+	</bean>
+
+</beans>
