@@ -10,9 +10,11 @@
         <wb-resource deploy-path="/WEB-INF/classes" source-path="/web"/>
         <wb-resource deploy-path="/WEB-INF/classes" source-path="/test"/>
         <wb-resource deploy-path="/WEB-INF/classes" source-path="/elastic-search"/>
-        <wb-resource deploy-path="/WEB-INF/classes" source-path="/mo"/>
         <wb-resource deploy-path="/WEB-INF/classes" source-path="/elastic-main"/>
-        <wb-resource deploy-path="/WEB-INF/classes" source-path="/elastic-mo"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/sms-email-service"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/elastic-sms"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/sms"/>
+        <wb-resource deploy-path="/WEB-INF/classes" source-path="/elastic-card-cdr"/>
         <property name="java-output-path" value="/1pay_search/build/classes"/>
         <property name="context-root" value="search"/>
     </wb-module>

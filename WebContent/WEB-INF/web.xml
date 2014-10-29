@@ -24,7 +24,8 @@
 			/WEB-INF/mongo-config.xml,
 			/WEB-INF/elastic-search-config.xml,
 			/WEB-INF/schedule-tasks.xml,
-			/WEB-INF/dynacache-memserver-application-context.xml
+			/WEB-INF/dynacache-application-context.xml
+			/WEB-INF/sms-email-service-context.xml
 		</param-value>
 	</context-param>
 	<filter>
@@ -74,4 +75,23 @@
 		<url-pattern>/card/pushIndex</url-pattern>
 	</servlet-mapping>
 	<!-- /push object servlet-->
+	
+	<!-- push object servlet-->
+    <servlet>
+        <servlet-name>IndexESSmsServlet</servlet-name>
+        <servlet-class>vn.onepay.search.servlets.IndexESSmsServlet</servlet-class>
+        <init-param>
+            <param-name>access-key</param-name>
+            <param-value>72hgke3h3brs6dwh6kgg</param-value>
+        </init-param>
+        <init-param>
+            <param-name>secret-key</param-name>
+            <param-value>i9er0d7gm7b9l9yt4ib8zjigwf6i1jpm</param-value>
+        </init-param>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>IndexESSmsServlet</servlet-name>
+        <url-pattern>/sms/pushIndex</url-pattern>
+    </servlet-mapping>
+    <!-- /push object servlet-->
 </web-app>

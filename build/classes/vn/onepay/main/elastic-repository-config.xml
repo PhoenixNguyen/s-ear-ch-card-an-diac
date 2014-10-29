@@ -26,7 +26,7 @@
 	
 	<elasticsearch:repositories base-package="vn.onepay.main.repositories" />
 	
-	<bean id="myMOService" class="vn.onepay.main.repositories.MOService" scope="prototype" >
+	<bean id="myMOService" class="vn.onepay.main.repositories.SMSService" scope="prototype" >
         <property name="myMORepository" ref="myMORepository"></property>
     </bean>
 </beans>

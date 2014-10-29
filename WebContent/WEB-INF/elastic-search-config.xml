@@ -11,7 +11,7 @@
 	xmlns:elasticsearch="http://www.springframework.org/schema/data/elasticsearch">
 
 	<elasticsearch:transport-client id="client"
-		cluster-name="elasticsearch" cluster-nodes="localhost:9300" /> <!-- 123.30.238.22 -->
+		cluster-name="elasticsearch" cluster-nodes="123.30.238.22:9300" /> <!-- 123.30.238.22 -->
 
 	<bean name="elasticsearchTemplate"
 		class="org.springframework.data.elasticsearch.core.ElasticsearchTemplate">

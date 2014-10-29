@@ -1,0 +1,249 @@
+package vn.onepay.search.controller;
+
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.collections.map.LinkedMap;
+import org.apache.commons.lang.StringUtils;
+import org.springframework.data.elasticsearch.core.facet.result.IntervalUnit;
+
+import vn.onepay.account.dao.AccountDAO;
+import vn.onepay.account.model.Account;
+import vn.onepay.cache.dynacache.PassiveDynaCache;
+import vn.onepay.cache.dynacache.PassiveDynaHashTableCache;
+import vn.onepay.search.entities.ESSMS;
+import vn.onepay.search.entities.FilteringSMS;
+import vn.onepay.search.service.ElasticSearchService;
+import vn.onepay.sms.service.SmsBrandNameService;
+import vn.onepay.utils.Utils;
+
+public class WarningSMSFixRateService {
+
+	private static String CACHE_ERROR_MERCHANT = "errorMerchants";
+	private ElasticSearchService elasticSearchService;
+	private PassiveDynaHashTableCache passiveDynaMemoryCache;
+	private List<String> accounts = new ArrayList<String>();
+	private AccountDAO accountDAO;
+	private SmsBrandNameService smsBrandNameService;
+
+	public PassiveDynaHashTableCache getPassiveDynaMemoryCache() {
+		return passiveDynaMemoryCache;
+	}
+	public void setPassiveDynaMemoryCache(
+	    PassiveDynaHashTableCache passiveDynaMemoryCache) {
+		this.passiveDynaMemoryCache = passiveDynaMemoryCache;
+	}
+
+	public ElasticSearchService getElasticSearchService() {
+		return elasticSearchService;
+	}
+	public void setElasticSearchService(
+			ElasticSearchService elasticSearchService) {
+		this.elasticSearchService = elasticSearchService;
+	}
+	
+	public List<String> getAccounts() {
+		return accounts;
+	}
+	public void setAccounts(List<String> accounts) {
+		this.accounts = accounts;
+	}
+
+	public void setAccountDAO(AccountDAO accountDAO) {
+		this.accountDAO = accountDAO;
+	}
+	public void setSmsBrandNameService(SmsBrandNameService smsBrandNameService) {
+		this.smsBrandNameService = smsBrandNameService;
+	}
+	
+	public void getValues() throws ParseException {
+	  System.out.println("REFRESH");
+		// Get exist error merchants
+		@SuppressWarnings("unchecked")
+		List<String> existSuspectMerchants = (List<String>) passiveDynaMemoryCache
+				.getCachedItem(CACHE_ERROR_MERCHANT);
+
+		List<String> fields = new ArrayList<String>();
+		fields.add("merchant");
+
+		// get data
+		@SuppressWarnings("unchecked")
+		Map<String, List<String>> keywords = new LinkedMap();
+		List<String> timeRanges = Arrays.asList(new String[] {
+				SMSAnalyticController.handleDate("09/10/2014", false),
+				SMSAnalyticController.handleDate("09/10/2014", true) });
+		if (timeRanges != null && timeRanges.size() > 0) {
+			String operator = "_operator_time_range";
+			keywords.put("request_time" + operator, timeRanges);
+		}
+
+		//check exist
+    if(existSuspectMerchants!=null && existSuspectMerchants.size() > 0){
+      for(int i = 0; i< existSuspectMerchants.size(); i++){
+        existSuspectMerchants.set(i, existSuspectMerchants.get(i).toLowerCase());
+      }
+      
+      String operator = "_operator_not_in";
+      keywords.put("merchant" + operator, existSuspectMerchants);
+    }
+    
+		// List Object
+		List<ESSMS> dataList = new ArrayList<ESSMS>();
+		int count = 0;
+		int facetSize = 20;
+
+		if (elasticSearchService.checkIndex(ESSMS.class)) {
+			count = elasticSearchService.count(fields, null, keywords,
+					facetSize, ESSMS.class);
+			dataList = elasticSearchService.search(fields, null, keywords,
+					null, 0/* page */, count/* limit */, facetSize, ESSMS.class);
+		}
+
+		List<ESSMS> sortedDataList = new ArrayList<ESSMS>();
+		// histogram
+		@SuppressWarnings("unchecked")
+		Map<String, List<IntervalUnit>> dataHistogramMap = new LinkedMap();
+
+		int limit = -1;
+		String fieldHistogram = "request_time";
+		String fieldFilter1 = "msisdn";
+		String fieldFilter2 = "provider";
+		String operator = "_operator_term";
+
+		sortedDataList = SMSAnalyticController.handleSortWithSubscriberByCount(
+				dataList, limit);
+
+		List<FilteringSMS> topMsisdns = new ArrayList<FilteringSMS>();
+		topMsisdns = SMSAnalyticController.getTopMsisdn(sortedDataList, limit);
+
+		// get histogram
+		if (topMsisdns != null && topMsisdns.size() > 0) {
+			for (FilteringSMS data : topMsisdns) {
+				// System.out.println("data.getMerchant(): " +
+				// data.getMerchant());
+
+			  keywords.put("merchant" + operator,
+            Arrays.asList(new String[] { data.getMerchant().toLowerCase() }));
+				keywords.put(fieldFilter1 + operator,
+						Arrays.asList(new String[] { data.getMsisdn() }));
+				keywords.put(fieldFilter2 + operator,
+            Arrays.asList(new String[] { data.getProvider() }));
+				
+				dataHistogramMap.put(
+						data.getMerchant() + "::" + data.getMsisdn() + "::" + data.getProvider(),
+						elasticSearchService.getHistogramFacet(fieldHistogram,
+								fields, null, keywords, facetSize, ESSMS.class));
+
+			}
+		}
+
+		if (dataHistogramMap != null && dataHistogramMap.size() > 0) {
+			/*
+			 * for(String key : dataHistogramMap.keySet()){
+			 * System.out.println(key + " " + dataHistogramMap.get(key).get(0));
+			 * }
+			 */
+
+			List<String> suspectMerchants = findSuspectMerchant(
+					dataHistogramMap, LIMIT_ERROR, existSuspectMerchants);
+			if (suspectMerchants != null && suspectMerchants.size() > 0) {
+				if (existSuspectMerchants == null
+						|| existSuspectMerchants.size() == 0)
+					passiveDynaMemoryCache.setCachedItem(CACHE_ERROR_MERCHANT,
+							suspectMerchants, 24 * 60 * 60);
+				else {
+					for (String merchant : suspectMerchants) {
+						existSuspectMerchants.add(merchant);
+					}
+
+					passiveDynaMemoryCache.updateCachedItem(
+							CACHE_ERROR_MERCHANT, existSuspectMerchants);
+				}
+
+				String merchants = "";
+				for (String merchant : suspectMerchants) {
+					merchants += (merchants.length() > 0?", " : "") + merchant;
+				}
+				
+				String content = "MERCHANT ERROR: " + merchants;
+				System.out.println(content);
+				sendSMSAlert(content);
+			}
+		}
+
+	}
+
+	public static int LIMIT_ERROR = 3;
+	@SuppressWarnings("unchecked")
+  private Map<String , Integer> limitErrorWithProvider(){
+	  Map<String , Integer> map = new LinkedMap();
+	  //Put provider here
+	  return map;
+	}
+	
+	private List<String> findSuspectMerchant(
+			Map<String, List<IntervalUnit>> dataHistogramMap, int limit,
+			List<String> existSuspectMerchants) {
+	  Map<String , Integer> errorLimitproviderConfigList = limitErrorWithProvider();
+	  
+		List<String> suspectMerchants = new ArrayList<String>();
+
+		if (dataHistogramMap != null && dataHistogramMap.size() > 0)
+			for (String key : dataHistogramMap.keySet()) {
+				String merchant = key.substring(0, key.indexOf("::"));
+				String msisdn = key.substring(key.indexOf("::") + 2, key.lastIndexOf("::"));
+				String provider = key.substring(key.lastIndexOf("::") + 2);
+				
+				if (suspectMerchants.contains(merchant))
+					continue;
+				if (existSuspectMerchants != null
+						&& existSuspectMerchants.size() > 0) {
+					if (existSuspectMerchants.contains(merchant))
+						continue;
+				}
+
+				//System.out.println("key merchant: " + merchant + " SDT: " + msisdn + " provider:" + provider);
+				//Limit with provider
+        if(errorLimitproviderConfigList != null && errorLimitproviderConfigList.size() > 0)
+          for(String providerKey : errorLimitproviderConfigList.keySet()){
+            if(provider.equalsIgnoreCase(providerKey)){
+              limit = (int)errorLimitproviderConfigList.get(providerKey);
+            }
+          }
+        
+				List<IntervalUnit> intervalUnits = dataHistogramMap.get(key);
+				if (intervalUnits != null && intervalUnits.size() > 0)
+					for (IntervalUnit iUnit : intervalUnits) {
+						if (iUnit.getCount() >= limit) {
+							suspectMerchants.add(merchant);
+							break;
+						}
+
+					}
+			}
+
+		return suspectMerchants;
+	}
+
+	private void sendSMSAlert(String content) {
+		for (String username : accounts) {
+			try {
+				Account account = accountDAO.find(username);
+				if (account != null
+						&& !"thankp".equalsIgnoreCase(account.getUsername())) {
+					String mobileNumber = account.getPhone();
+					if (StringUtils.isNotEmpty(mobileNumber)) {
+						mobileNumber = Utils.getFormatedMsisdn(mobileNumber);
+						smsBrandNameService.sendSMSMessageToStaff(mobileNumber, content);
+					}
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+}

@@ -318,50 +318,30 @@ $(function(){
 											</select>
 										</c:if>
 									</div>
-									
-									<%-- <div class="filter_row">
-										<fieldset class="fieldset_filter">
-											<legend>
-												<input type="checkbox" name="telcoAll" value="telcoAll" id="telcoAll" class="chck_filter" ${fn:contains(param.telcoAll,'telcoAll')?'checked="checked"':'' }  /> Loại thẻ
-												<script type="text/javascript">
-													$(document).ready(function(){
-														$('#telcoAll').click(function() {
-															if(this.checked) {
-																$(this).closest('.filter_row').find('input[type=checkbox]').attr('checked', 'checked');
-															} else {
-																$(this).closest('.filter_row').find('input[type=checkbox]').removeAttr('checked');
-															}
-														});
-													});
-												</script>
-											</legend>
-											
-											<div style="padding: 2px;">
-												<c:set var="allTc" value="," />
-												<c:forEach var="tc" items="${paramValues.filter_card_type}">
-													<c:set var="allTc" value="${allTc}${tc}," />
-												</c:forEach>
-												<c:forEach var="tc" items="${model.facetAllsMap['type']}">
-													<div style="display: inline-block;">
-														<c:set var="_tc" value=",${tc.getTerm()}," />
-														<input type="checkbox" class="chck_filter" name="filter_card_type" title="${tc.getTerm()}" value="${tc.getTerm()}" 
-															${fn:contains(allTc,_tc)?'checked="checked"':'' } />
-														<label class="lbl_chcksub">${tc.getTerm()}</label>
-													</div>
-												</c:forEach>
-											</div>
-										</fieldset>
-									</div> --%>
-									
-								<!-- <div class="filter_row">
-									
-								</div> -->
 								
 								<div class="filter_row" style="text-align: center;">
 					               	<input  style="margin-top: 0px;"  class="btn_greensmall" type="submit" value="Lọc" />
 				                </div>
 							</div>
-							
+							<div class="dash_row">
+                                
+                                <div id="dash_tab" style="padding-right: 0; margin-top: 10px;">
+                                    
+                                    <a href="javascript:switchTab('analytics');"  class="tab${(param.tab==null || param.tab=='analytics' || param.tab=='' || param.tab!='error_detail')?'_slc':''}"><span title="Phân tích giao dịch thẻ">Phân tích GD</span></a> 
+                                    <a href="javascript:switchTab('error_detail');"  class="tab${param.tab=='error_detail'?'_slc':''}"><span title="">Chi tiết lỗi</span></a>
+                                    
+                                    <input type="hidden" value="analytics" name="tab"/>
+                                    <script type="text/javascript">
+                                            
+                                        function switchTab(tab){
+                                            
+                                            $('form[name=filter_histogram] input[name=tab]').val(tab);
+                                            $('form[name=filter_histogram]').submit();
+                                        }
+                                    </script> 
+                                </div>
+                            </div>
+                            
 							<span style="display: block; float: right; margin-top: 10px">
 								<input type="checkbox" id="comparation" name="comparation" ${param.comparation == 'on'?'checked':'' }/>
 								<label>So sánh</label>
